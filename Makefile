@@ -1,7 +1,7 @@
 all: prompt test
 
 %: %.rs
-	rustc --opt-level=3 $^ -o $@
+	rustc -C link-args=-dead_strip -Z lto --opt-level=3 $^ -o $@
 
 test:
 	./prompt
