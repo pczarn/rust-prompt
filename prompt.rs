@@ -10,9 +10,11 @@ use std::io::process::ExitStatus;
 
 fn git_status(staged: bool) -> Option<String> {
     let mut git = Command::new("git");
-    let cmd = git.args(["diff", "--shortstat", "--ignore-submodules"]).arg(
-        if staged { "--staged" } else { "" }
-    );
+    let cmd = if staged {
+        git.args(["diff", "--shortstat", "--ignore-submodules"])
+    } else {
+        git.args(["diff", "--shortstat", "--ignore-submodules", "--staged"])
+    };
 
     match cmd.output() {
         Ok(ProcessOutput {
@@ -24,8 +26,7 @@ fn git_status(staged: bool) -> Option<String> {
                 let s: Vec<char> = s.trim_left().chars().take_while(|c| c.is_digit()).collect();
                 String::from_chars(s.as_slice())
             })
-        }
-        else {
+        } else {
             None
         },
         _ => None
@@ -116,9 +117,9 @@ fn main() {
                 term_title.push_str(branch);
             }
 
-            match git_status(true) {
+            match git_status(false) {
                 Some(staged) => prompt.push_str(format!("\\[\x1b[1;32m\\]+{}", staged).as_slice()),
-                None => match git_status(false) {
+                None => match git_status(true) {
                     Some(changed) => {
                         prompt.push_str("\\[\x1b[1;31m\\]*");
                         prompt.push_str(changed.as_slice());
