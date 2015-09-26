@@ -56,7 +56,6 @@ fn iter_after<A, I, J>(mut iter: I, mut prefix: J) -> Option<I> where
 
 fn main() {
     let mut prompt = String::from("\x1b[1;34m\\w");
-    let mut term_title = String::from(r"\w");
 
     let pwd_env = env::var("PWD").unwrap();
     let pwd = Path::new(&pwd_env);
@@ -118,7 +117,6 @@ fn main() {
             }
 
             prompt = "\x1b[1m".to_string();
-            term_title = String::new();
             match parent_repo {
                 Some(prepo) => match prepo.file_name() {
                     Some(prepo_name) => {
@@ -133,7 +131,6 @@ fn main() {
                 Some(repo_name) => {
                     let repo_name = repo_name.to_str().unwrap();
                     prompt.push_str(repo_name);
-                    term_title.push_str(repo_name);
                 }
                 None => ()
             }
@@ -141,8 +138,6 @@ fn main() {
             if branch != "master" {
                 prompt.push_str("\x1b[m:\x1b[31m");
                 prompt.push_str(branch);
-                term_title.push(':');
-                term_title.push_str(branch);
             }
 
             match git_status(false) {
@@ -166,6 +161,16 @@ fn main() {
         }
         None => ()
     }
+
+    // Strip color codes.
+    let mut term_title;
+    {
+        let mut iter = prompt.split("\x1b[");
+        term_title = iter.next().unwrap_or("").to_string();
+        for colored in iter {
+            term_title.push_str(&colored[colored.find('m').unwrap() + 1 ..]);
+        }
+    };
 
     match env::var("RUBY_VERSION") {
         Ok(rv) => {
