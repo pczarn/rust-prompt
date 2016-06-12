@@ -189,15 +189,17 @@ fn main() {
         _ => ()
     }
 
+    prompt = prompt.replace("\\w", "\\[\\w\\]");
+
     match env::var("TERM") {
         Ok(v) => if v.starts_with("xterm") {
-            prompt.push_str(&format!("\x1b]0;{}\x07", term_title)[..]);
+            prompt.push_str(&format!("\\[\x1b]0;{}\x07\\]", term_title)[..]);
         },
         _ => ()
     }
 
     let mut final_prompt;
-    if env::args().next().map(|s| s == "--delimit-non-printable") == Some(true) {
+    if env::args().skip(1).next().map(|s| s == "--delimit-non-printable") == Some(true) {
         let mut iter = prompt.split("\x1b[");
 
         final_prompt = iter.next().unwrap_or("").to_string();
