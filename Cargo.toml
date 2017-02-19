@@ -1,9 +1,12 @@
 [package]
 
 name = "rust-prompt"
-version = "0.0.1"
+version = "0.0.2"
 authors = [ "pioczarn@gmail.com" ]
 
 [[bin]]
 name = "rust-prompt"
 path = "prompt.rs"
+
+[dependencies]
+colored = "1.4"

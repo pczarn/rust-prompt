@@ -1,4 +1,7 @@
+extern crate colored;
+
 use std::env;
+use std::fmt::Write;
 use std::io::Read;
 use std::str;
 use std::string::String;
@@ -7,6 +10,8 @@ use std::fs;
 use std::fs::File;
 use std::process::Command;
 use std::process;
+
+use colored::{Colorize, ColoredString};
 
 fn git_status(staged: bool) -> Option<String> {
     let mut cmd = Command::new("git");
@@ -54,11 +59,7 @@ fn iter_after<A, I, J>(mut iter: I, mut prefix: J) -> Option<I> where
     }
 }
 
-fn main() {
-    let mut prompt = String::from("\x1b[1;34m\\w");
-
-    let pwd_env = env::var("PWD").unwrap();
-    let pwd = Path::new(&pwd_env);
+fn for_git_repo(prompt: &mut Vec<ColoredString>, pwd: &Path) {
     let mut repo = PathBuf::new().join(&pwd);
     let mut git_branch = None;
     let mut parent_repo = None;
@@ -103,6 +104,7 @@ fn main() {
 
     match git_branch {
         Some(b) => {
+            prompt.clear();
             let mut branch = b[..].trim();
             if branch.starts_with("ref:") {
                 if branch.starts_with("ref: refs/heads/") {
@@ -116,12 +118,12 @@ fn main() {
                 branch = &branch[..7];
             }
 
-            prompt = "\x1b[1m".to_string();
             match parent_repo {
                 Some(prepo) => match prepo.file_name() {
                     Some(prepo_name) => {
-                        prompt.push_str(prepo_name.to_str().unwrap());
-                        prompt.push_str("\x1b[m/\x1b[1m");
+                        let prepo_name = prepo_name.to_str().unwrap();
+                        prompt.push(prepo_name.clear().bold());
+                        prompt.push("/".clear());
                     }
                     None => ()
                 },
@@ -130,70 +132,71 @@ fn main() {
             match repo.file_name() {
                 Some(repo_name) => {
                     let repo_name = repo_name.to_str().unwrap();
-                    prompt.push_str(repo_name);
+                    prompt.push(repo_name.normal());
                 }
                 None => ()
             }
 
             if branch != "master" {
-                prompt.push_str("\x1b[m:\x1b[31m");
-                prompt.push_str(branch);
+                prompt.push(":".clear());
+                prompt.push(branch.red());
             }
 
             match git_status(false) {
                 Some(staged) => {
-                    prompt.push_str("\x1b[1;32m+");
-                    prompt.push_str(&staged[..]);
+                    prompt.push("+".green().bold());
+                    prompt.push(staged.green().bold());
                 }
                 None => match git_status(true) {
                     Some(changed) => {
-                        prompt.push_str("\x1b[1;31m*");
-                        prompt.push_str(&changed[..]);
+                        prompt.push("*".red().bold());
+                        prompt.push(changed.red().bold());
                     }
                     None => ()
                 }
             }
 
             if &*repo != pwd {
-                prompt.push_str("\x1b[1;34m/");
-                prompt.push_str(relative_from(&pwd, &*repo).unwrap().to_str().unwrap());
+                prompt.push("/".blue());
+                prompt.push(relative_from(pwd, &*repo).unwrap().to_str().unwrap().normal());
             }
         }
-        None => ()
+        None => {}
     }
+}
+
+fn main() {
+    let mut pieces = vec![];
+    pieces.push("\\w".blue());
+
+    let pwd_env = env::var("PWD").unwrap();
+    let pwd = Path::new(&pwd_env);
+
+    for_git_repo(&mut pieces, &pwd);
 
     // Strip color codes.
-    let mut term_title;
-    {
-        let mut iter = prompt.split("\x1b[");
-        term_title = iter.next().unwrap_or("").to_string();
-        for colored in iter {
-            term_title.push_str(&colored[colored.find('m').unwrap() + 1 ..]);
-        }
-    };
-
-    match env::var("RUBY_VERSION") {
-        Ok(rv) => {
-            prompt.push_str(" \x1b[0;37m");
-            prompt.push_str(&rv[..]);
-        }
-        _ => ()
+    let mut term_title = String::new();
+    for colored in &pieces {
+        term_title.push_str(&**colored);
     }
 
-    prompt.push_str(" \x1b[0m");
+    pieces.push(" ".clear());
 
     match env::home_dir() {
         Some(home) => if &*home != pwd {
-            prompt.push_str("$ ");
+            pieces.push("$ ".clear());
         },
         _ => ()
     }
 
-    prompt = prompt.replace("\\w", "\\[\\w\\]");
+    let mut prompt = String::new();
+    for piece in &pieces {
+        write!(&mut prompt, "{}", piece).unwrap();
+    }
 
     match env::var("TERM") {
         Ok(v) => if v.starts_with("xterm") {
-            prompt.push_str(&format!("\\[\x1b]0;{}\x07\\]", term_title)[..]);
+            prompt.push_str(&format!("\\[\x1b]2;{}\x07\\]", term_title)[..]);
         },
         _ => ()
     }
