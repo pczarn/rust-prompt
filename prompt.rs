@@ -194,24 +194,32 @@ fn main() {
         write!(&mut prompt, "{}", piece).unwrap();
     }
 
+    let delimit_non_printable = env::args().skip(1).next().map(|s| s == "--delimit-non-printable") == Some(true);
+
     match env::var("TERM") {
         Ok(v) => if v.starts_with("xterm") {
+            if delimit_non_printable {
+                prompt.push_str("%{");
+            }
             prompt.push_str(&format!("\x1b]2;{}\x07", term_title)[..]);
+            if delimit_non_printable {
+                prompt.push_str("%}");
+            }
         },
         _ => ()
     }
 
     let mut final_prompt;
-    if env::args().skip(1).next().map(|s| s == "--delimit-non-printable") == Some(true) {
+    if delimit_non_printable {
         let mut iter = prompt.split("\x1b[");
 
         final_prompt = iter.next().unwrap_or("").to_string();
 
         for colored in iter {
-            final_prompt.push_str("\\[\x1b[");
+            final_prompt.push_str("%{");
             let text_start = colored.find('m').unwrap() + 1;
             final_prompt.push_str(&colored[..text_start]);
-            final_prompt.push_str("\\]");
+            final_prompt.push_str("%}");
             final_prompt.push_str(&colored[text_start..]);
         }
     } else {
