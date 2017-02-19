@@ -167,7 +167,7 @@ fn for_git_repo(prompt: &mut Vec<ColoredString>, pwd: &Path) {
 
 fn main() {
     let mut pieces = vec![];
-    pieces.push("\\w".blue());
+    pieces.push(r"%~".blue());
 
     let pwd_env = env::var("PWD").unwrap();
     let pwd = Path::new(&pwd_env);
@@ -196,7 +196,7 @@ fn main() {
 
     match env::var("TERM") {
         Ok(v) => if v.starts_with("xterm") {
-            prompt.push_str(&format!("\\[\x1b]2;{}\x07\\]", term_title)[..]);
+            prompt.push_str(&format!("\x1b]2;{}\x07", term_title)[..]);
         },
         _ => ()
     }
